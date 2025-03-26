@@ -35,7 +35,11 @@ router.post('/', async (req, res) => {
 
         const match = new Match(matchData);
         await match.save();
-        res.status(201).json(match);
+        const populatedMatch = await Match.findById(match._id)
+            .populate('teams.team1')
+            .populate('teams.team2')
+            .populate('innings.team');
+        res.status(201).json(populatedMatch);
     } catch (error) {
         console.error('Error creating match:', error);
         res.status(400).json({ 
@@ -48,7 +52,11 @@ router.post('/', async (req, res) => {
 // Get all matches
 router.get('/', async (req, res) => {
     try {
-        const matches = await Match.find().sort({ date: -1 });
+        const matches = await Match.find()
+            .populate('teams.team1')
+            .populate('teams.team2')
+            .populate('innings.team')
+            .sort({ date: -1 });
         res.json(matches);
     } catch (error) {
         console.error('Error fetching matches:', error);
@@ -62,7 +70,10 @@ router.get('/', async (req, res) => {
 // Get match by ID
 router.get('/:id', async (req, res) => {
     try {
-        const match = await Match.findById(req.params.id);
+        const match = await Match.findById(req.params.id)
+            .populate('teams.team1')
+            .populate('teams.team2')
+            .populate('innings.team');
         if (!match) {
             return res.status(404).json({ message: 'Match not found' });
         }
@@ -83,7 +94,10 @@ router.put('/:id', async (req, res) => {
             req.params.id,
             req.body,
             { new: true, runValidators: true }
-        );
+        ).populate('teams.team1')
+         .populate('teams.team2')
+         .populate('innings.team');
+
         if (!match) {
             return res.status(404).json({ message: 'Match not found' });
         }
@@ -100,7 +114,11 @@ router.put('/:id', async (req, res) => {
 // Update match score
 router.post('/:id/score', async (req, res) => {
     try {
-        const match = await Match.findById(req.params.id);
+        const match = await Match.findById(req.params.id)
+            .populate('teams.team1')
+            .populate('teams.team2')
+            .populate('innings.team');
+            
         if (!match) {
             return res.status(404).json({ message: 'Match not found' });
         }
@@ -143,22 +161,55 @@ router.post('/:id/score', async (req, res) => {
         currentInnings.wickets += wickets;
         
         // Update innings overs (6 balls = 1 over)
-        const currentInningsBalls = (currentInnings.overs % 1) * 10;
-        const newInningsBalls = currentInningsBalls + 1;
-        if (newInningsBalls === 6) {
-            currentInnings.overs = Math.floor(currentInnings.overs) + 1;
-        } else {
-            currentInnings.overs = Math.floor(currentInnings.overs) + (newInningsBalls / 10);
+        const hasExtras = extras && Object.values(extras).some(value => value > 0);
+        if (!hasExtras) {
+            const currentInningsBalls = Math.floor((currentInnings.overs % 1) * 10);
+            const newInningsBalls = currentInningsBalls + 1;
+            if (newInningsBalls === 6) {
+                currentInnings.overs = Math.floor(currentInnings.overs) + 1;
+            } else {
+                currentInnings.overs = Math.floor(currentInnings.overs) + (newInningsBalls / 10);
+            }
         }
         
         currentInnings.extras = { ...currentInnings.extras, ...extras };
+
+        // Record ball-by-ball data
+        if (hasExtras) {
+            // Handle extras
+            Object.entries(extras).forEach(([type, count]) => {
+                if (count > 0) {
+                    currentInnings.balls.push({
+                        batsman: batsmanName,
+                        bowler: bowlerName,
+                        runs: 0,
+                        isWicket: false,
+                        isExtra: true,
+                        extraType: type
+                    });
+                }
+            });
+        } else {
+            // Handle regular ball
+            currentInnings.balls.push({
+                batsman: batsmanName,
+                bowler: bowlerName,
+                runs,
+                isWicket: wickets > 0,
+                isExtra: false
+            });
+        }
 
         // Update current batsmen and bowler
         currentInnings.currentBatsmen = currentInnings.players.filter(p => !p.isOut).slice(0, 2);
         currentInnings.currentBowler = bowler;
 
         await match.save();
-        res.json(match);
+        const updatedMatch = await Match.findById(match._id)
+            .populate('teams.team1')
+            .populate('teams.team2')
+            .populate('innings.team');
+        res.json(updatedMatch);
     } catch (error) {
         console.error('Error updating score:', error);
         res.status(400).json({ 
@@ -171,7 +222,10 @@ router.post('/:id/score', async (req, res) => {
 // Get match statistics
 router.get('/:id/statistics', async (req, res) => {
     try {
-        const match = await Match.findById(req.params.id);
+        const match = await Match.findById(req.params.id)
+            .populate('teams.team1')
+            .populate('teams.team2')
+            .populate('innings.team');
         if (!match) {
             return res.status(404).json({ message: 'Match not found' });
         }

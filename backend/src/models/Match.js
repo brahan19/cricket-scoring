@@ -13,7 +13,7 @@ const playerSchema = new mongoose.Schema({
 });
 
 const inningsSchema = new mongoose.Schema({
-    team: { type: String, required: true },
+    team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true },
     total: { type: Number, default: 0 },
     wickets: { type: Number, default: 0 },
     overs: { type: Number, default: 0 },
@@ -25,13 +25,22 @@ const inningsSchema = new mongoose.Schema({
     },
     players: [playerSchema],
     currentBatsmen: [playerSchema],
-    currentBowler: playerSchema
+    currentBowler: playerSchema,
+    balls: [{
+        batsman: { type: String, required: true },
+        bowler: { type: String, required: true },
+        runs: { type: Number, default: 0 },
+        isWicket: { type: Boolean, default: false },
+        isExtra: { type: Boolean, default: false },
+        extraType: { type: String, enum: ['wide', 'noBall', 'bye', 'legBye'] },
+        timestamp: { type: Date, default: Date.now }
+    }]
 });
 
 const matchSchema = new mongoose.Schema({
     teams: {
-        team1: { type: String, required: true },
-        team2: { type: String, required: true }
+        team1: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true },
+        team2: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true }
     },
     teamMembers: {
         team1: [{ type: String, required: true }],

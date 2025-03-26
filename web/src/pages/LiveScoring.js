@@ -20,14 +20,12 @@ import {
   Stack
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMatch, updateScore, updateMatch, getTeam } from '../services/api';
+import { getMatch, updateScore, updateMatch } from '../services/api';
 
 const LiveScoring = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [match, setMatch] = useState(null);
-  const [team1, setTeam1] = useState(null);
-  const [team2, setTeam2] = useState(null);
   const [error, setError] = useState('');
   const [scoreInput, setScoreInput] = useState({
     runs: 0,
@@ -51,13 +49,6 @@ const LiveScoring = () => {
     try {
       const response = await getMatch(id);
       setMatch(response.data);
-      
-      // Fetch team details
-      const team1Response = await getTeam(response.data.teams.team1);
-      const team2Response = await getTeam(response.data.teams.team2);
-      setTeam1(team1Response.data);
-      setTeam2(team2Response.data);
-      
       setError('');
     } catch (error) {
       console.error('Error loading match:', error);
@@ -112,7 +103,7 @@ const LiveScoring = () => {
     );
   }
 
-  if (!match || !team1 || !team2) {
+  if (!match || !match.teams?.team1 || !match.teams?.team2) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography>Loading...</Typography>
@@ -121,16 +112,18 @@ const LiveScoring = () => {
   }
 
   const currentInnings = match.innings[match.currentInnings];
+  const battingTeam = currentInnings.team._id === match.teams.team1._id ? match.teams.team1 : match.teams.team2;
+  const bowlingTeam = currentInnings.team._id === match.teams.team1._id ? match.teams.team2 : match.teams.team1;
 
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack spacing={1}>
           <Typography variant="h6" component="h1" align="center">
-            {team1.name} vs {team2.name}
+            {match.teams.team1.name} vs {match.teams.team2.name}
           </Typography>
           <Typography variant="subtitle1" color="primary" align="center">
-            {currentInnings.team === team1._id ? team1.name : team2.name} Innings
+            {battingTeam.name} Innings
           </Typography>
           <Typography variant="h3" align="center" gutterBottom>
             {currentInnings.total}/{currentInnings.wickets}
@@ -155,7 +148,7 @@ const LiveScoring = () => {
                   }))}
                   label="Batsman"
                 >
-                  {(currentInnings.team === team1._id ? team1.members : team2.members).map((member) => (
+                  {battingTeam.members.map((member) => (
                     <MenuItem key={member._id} value={member.name}>
                       {member.name}
                     </MenuItem>
@@ -174,7 +167,7 @@ const LiveScoring = () => {
                   }))}
                   label="Bowler"
                 >
-                  {(currentInnings.team === team1._id ? team2.members : team1.members).map((member) => (
+                  {bowlingTeam.members.map((member) => (
                     <MenuItem key={member._id} value={member.name}>
                       {member.name}
                     </MenuItem>

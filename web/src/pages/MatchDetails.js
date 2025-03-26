@@ -73,7 +73,7 @@ const MatchDetails = () => {
           <Grid item xs={12}>
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography variant="h5" component="h1">
-                {match.teams.team1} vs {match.teams.team2}
+                {match.teams.team1.name} vs {match.teams.team2.name}
               </Typography>
               <Chip
                 label={match.status.toUpperCase()}
@@ -106,7 +106,7 @@ const MatchDetails = () => {
           {match.innings.map((innings, index) => (
             <Box key={index} sx={{ mb: 3 }}>
               <Typography variant="subtitle1" gutterBottom>
-                {innings.team} Innings
+                {innings.team.name} Innings
               </Typography>
               <Typography variant="h4">
                 {innings.total}/{innings.wickets} ({innings.overs} overs)
@@ -175,6 +175,77 @@ const MatchDetails = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              {/* Ball by Ball Commentary */}
+              <Paper sx={{ p: 2, mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Ball by Ball Commentary
+                </Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Bowler</TableCell>
+                        {[...Array(6)].map((_, i) => (
+                          <TableCell key={i} align="center">
+                            {i + 1}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {innings.balls?.reduce((acc, ball, index) => {
+                        const overNumber = Math.floor(index / 6);
+                        const ballNumber = index % 6;
+                        
+                        // If it's a new over, create a new row
+                        if (ballNumber === 0) {
+                          acc.push({
+                            bowler: ball.bowler,
+                            balls: new Array(6).fill(null)
+                          });
+                        }
+                        
+                        // Add the ball to the current row
+                        const currentRow = acc[overNumber];
+                        let displayValue = ball.runs.toString();
+                        
+                        // Handle extras
+                        if (ball.isExtra) {
+                          displayValue = `+${ball.extraType === 'wide' ? '1w' : 
+                                        ball.extraType === 'noBall' ? '1nb' : 
+                                        ball.extraType === 'bye' ? '1b' : '1lb'}`;
+                        }
+                        
+                        // Handle wickets
+                        if (ball.isWicket) {
+                          displayValue = 'W';
+                        }
+                        
+                        currentRow.balls[ballNumber] = displayValue;
+                        return acc;
+                      }, []).map((row, rowIndex) => (
+                        <TableRow key={rowIndex}>
+                          <TableCell>{row.bowler}</TableCell>
+                          {row.balls.map((ball, ballIndex) => (
+                            <TableCell 
+                              key={ballIndex} 
+                              align="center"
+                              sx={{
+                                color: ball === 'W' ? 'error.main' : 
+                                       ball?.startsWith('+') ? 'warning.main' : 
+                                       ball && parseInt(ball) > 0 ? 'success.main' : 'inherit'
+                              }}
+                            >
+                              {ball || '-'}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
             </Box>
           ))}
         </Paper>

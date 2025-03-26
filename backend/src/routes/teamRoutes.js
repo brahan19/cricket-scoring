@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Team = require('../models/Team');
+const mongoose = require('mongoose');
 
 // Create a new team
 router.post('/', async (req, res) => {
@@ -31,10 +32,22 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get team by ID
-router.get('/:id', async (req, res) => {
+// Get team by ID or name
+router.get('/:identifier', async (req, res) => {
     try {
-        const team = await Team.findById(req.params.id);
+        let team;
+        const identifier = req.params.identifier;
+
+        // Try to find by ID first
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+            team = await Team.findById(identifier);
+        }
+
+        // If not found by ID, try to find by name
+        if (!team) {
+            team = await Team.findOne({ name: decodeURIComponent(identifier) });
+        }
+
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
         }
@@ -49,13 +62,29 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update team
-router.put('/:id', async (req, res) => {
+router.put('/:identifier', async (req, res) => {
     try {
-        const team = await Team.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
+        let team;
+        const identifier = req.params.identifier;
+
+        // Try to update by ID first
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+            team = await Team.findByIdAndUpdate(
+                identifier,
+                req.body,
+                { new: true, runValidators: true }
+            );
+        }
+
+        // If not found by ID, try to update by name
+        if (!team) {
+            team = await Team.findOneAndUpdate(
+                { name: decodeURIComponent(identifier) },
+                req.body,
+                { new: true, runValidators: true }
+            );
+        }
+
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
         }
@@ -70,12 +99,25 @@ router.put('/:id', async (req, res) => {
 });
 
 // Add member to team
-router.post('/:id/members', async (req, res) => {
+router.post('/:identifier/members', async (req, res) => {
     try {
-        const team = await Team.findById(req.params.id);
+        let team;
+        const identifier = req.params.identifier;
+
+        // Try to find by ID first
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+            team = await Team.findById(identifier);
+        }
+
+        // If not found by ID, try to find by name
+        if (!team) {
+            team = await Team.findOne({ name: decodeURIComponent(identifier) });
+        }
+
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
         }
+
         team.members.push(req.body);
         await team.save();
         res.json(team);
@@ -89,12 +131,25 @@ router.post('/:id/members', async (req, res) => {
 });
 
 // Remove member from team
-router.delete('/:id/members/:memberId', async (req, res) => {
+router.delete('/:identifier/members/:memberId', async (req, res) => {
     try {
-        const team = await Team.findById(req.params.id);
+        let team;
+        const identifier = req.params.identifier;
+
+        // Try to find by ID first
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+            team = await Team.findById(identifier);
+        }
+
+        // If not found by ID, try to find by name
+        if (!team) {
+            team = await Team.findOne({ name: decodeURIComponent(identifier) });
+        }
+
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
         }
+
         team.members = team.members.filter(member => 
             member._id.toString() !== req.params.memberId
         );

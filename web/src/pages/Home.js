@@ -8,14 +8,16 @@ import {
   CardActions, 
   Button,
   Fab,
-  Box
+  Box,
+  Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { getMatches } from '../services/api';
 
 const Home = () => {
   const [matches, setMatches] = useState([]);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,10 +26,12 @@ const Home = () => {
 
   const loadMatches = async () => {
     try {
-      const response = await api.getAllMatches();
+      const response = await getMatches();
       setMatches(response.data);
+      setError('');
     } catch (error) {
       console.error('Error loading matches:', error);
+      setError('Failed to load matches. Please try again.');
     }
   };
 
@@ -42,11 +46,21 @@ const Home = () => {
     }
   };
 
+  const getTeamName = (team) => {
+    return team?.name || 'Unknown Team';
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         Cricket Scoring App
       </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         {matches.map((match) => {
@@ -56,7 +70,7 @@ const Home = () => {
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    {match.teams.team1} vs {match.teams.team2}
+                    {getTeamName(match.teams.team1)} vs {getTeamName(match.teams.team2)}
                   </Typography>
                   <Typography color={status.color} gutterBottom>
                     {status.text}
